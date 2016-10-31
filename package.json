@@ -1,5 +1,5 @@
 {
-  "name": "bluebird",
+  "name": "@eposnow/bluebird",
   "description": "Full featured Promises/A+ implementation with exceptionally good performance",
   "version": "3.1.4",
   "keywords": [
