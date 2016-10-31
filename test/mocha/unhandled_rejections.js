@@ -534,8 +534,8 @@ describe("global events", function() {
             process.on(name, fn);
         };
         detachGlobalHandlers = function() {
-            process.removeAllListeners("unhandledRejection");
-            process.removeAllListeners("rejectionHandled");
+            process.removeAllListeners("bluebirdUnhandledRejection");
+            process.removeAllListeners("bluebirdRejectionHandled");
         };
     } else {
         attachGlobalHandler = function(name, fn) {
@@ -553,11 +553,11 @@ describe("global events", function() {
         return new Promise(function(resolve, reject) {
             var err = new Error();
             var receivedPromise;
-            attachGlobalHandler("unhandledRejection", function(reason, promise) {
+            attachGlobalHandler("bluebirdUnhandledRejection", function(reason, promise) {
                 assert.strictEqual(reason, err);
                 receivedPromise = promise;
             });
-            attachGlobalHandler("rejectionHandled", function(promise) {
+            attachGlobalHandler("bluebirdRejectionHandled", function(promise) {
                 assert.strictEqual(receivedPromise, promise);
                 resolve();
             });
@@ -587,13 +587,13 @@ describe("global events", function() {
                 order.push(3);
             });
 
-            attachGlobalHandler("unhandledRejection", function(reason, promise) {
+            attachGlobalHandler("bluebirdUnhandledRejection", function(reason, promise) {
                 assert.strictEqual(reason, err);
                 receivedPromises.push(promise);
                 order.push(2);
             });
 
-            attachGlobalHandler("rejectionHandled", function(promise) {
+            attachGlobalHandler("bluebirdRejectionHandled", function(promise) {
                 assert.strictEqual(receivedPromises[1], promise);
                 order.push(4);
                 assert.deepEqual(expectedOrder, order);
@@ -640,25 +640,25 @@ if (windowDomEventSupported) {
                 var order = [];
                 var err = new Error();
                 var promise = Promise.reject(err);
-                attachEvent("unhandledrejection", function(e) {
+                attachEvent("bluebirdunhandledrejection", function(e) {
                     e.preventDefault();
                     assert.strictEqual(e.detail.promise, promise);
                     assert.strictEqual(e.detail.reason, err);
                     order.push(1);
                 });
-                attachEvent("unhandledrejection", function(e) {
+                attachEvent("bluebirdunhandledrejection", function(e) {
                     assert.strictEqual(e.detail.promise, promise);
                     assert.strictEqual(e.detail.reason, err);
                     assert.strictEqual(e.defaultPrevented, true);
                     order.push(2);
                 });
-                attachEvent("rejectionhandled", function(e) {
+                attachEvent("bluebirdrejectionhandled", function(e) {
                     e.preventDefault();
                     assert.strictEqual(e.detail.promise, promise);
                     assert.strictEqual(e.detail.reason, undefined);
                     order.push(3);
                 });
-                attachEvent("rejectionhandled", function(e) {
+                attachEvent("bluebirdrejectionhandled", function(e) {
                     assert.strictEqual(e.detail.promise, promise);
                     assert.strictEqual(e.detail.reason, undefined);
                     assert.strictEqual(e.defaultPrevented, true);
