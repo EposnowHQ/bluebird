@@ -80,6 +80,12 @@ describe("regressions", function() {
         });
     });
 
+    specify("gh-1006", function() {
+        return Promise.resolve().then(function() {
+            new Promise(function() {}).tap(function() {}).cancel();
+        });
+    });
+
     if (testUtils.isNodeJS) {
         describe("github-689", function() {
             var originalProperty = Object.getOwnPropertyDescriptor(process, "domain");
@@ -95,6 +101,7 @@ describe("regressions", function() {
                     enumerable: true,
                     configurable: true,
                     value: {
+                        emit: function() {},
                         bind: function(fn) {
                             bindCalls++;
                             // Ensure non-strict mode.
@@ -133,5 +140,30 @@ describe("regressions", function() {
                 });
             });
         });
+
+        describe("long promise chain stack overflow", function() {
+            specify("mapSeries", function() {
+                var array = new Array(5000);
+                for (var i = 0; i < array.length; ++i) {
+                    array[i] = null;
+                }
+
+                var theError = new Error();
+
+                var queryAsync = Promise.promisify(function(cb) {
+                    process.nextTick(function() {
+                        cb(theError);
+                    }, 1);
+                });
+
+                return Promise.mapSeries(array, function() {
+                    return queryAsync();
+                }).caught(function(e) {
+                    assert.strictEqual(e.cause, theError);
+                });
+            });
+        });
     }
+
+
 });

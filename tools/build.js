@@ -67,15 +67,9 @@ var lastLineCode = "                                                         \n\
 
 function getOptionalRequireCode(srcs) {
     return srcs.sort(function(a, b) {
-        var deps = optionalModuleRequireMap[a.sourceFileName];
-        if (deps !== undefined) {
-            if (Array.isArray(deps)) {
-                return 1;
-            } else {
-                return -1;
-            }
-        }
-        return 0;
+        var aHasDeps = Array.isArray(optionalModuleRequireMap[a.sourceFileName]);
+        var bHasDeps = Array.isArray(optionalModuleRequireMap[b.sourceFileName]);
+        return aHasDeps - bHasDeps;
     }).reduce(function(ret, cur, i) {
         if(optionalModuleRequireMap[cur.sourceFileName]) {
             ret += "require('./"+cur.sourceFileName+"')("+ cur.deps.join(", ") +");\n";
@@ -260,8 +254,8 @@ function buildBrowser(sources, dir, tmpDir, depsRequireCode, minify, npmPackage,
 
 var root = process.cwd();
 // Since rm -rf is called, better be sure...
-if (path.basename(root).toLowerCase() !== "bluebird") {
-    throw new Error("cwd must be se to bluebird project root. Cwd is currently\n\n" +
+if (path.basename(root).toLowerCase().indexOf("bluebird") !== 0) {
+    throw new Error("cwd must be set to bluebird project root. cwd is currently\n\n" +
         "         " + process.cwd() + "\n");
 }
 var dirs = {
@@ -277,13 +271,14 @@ function build(options) {
     options = Object(options);
     var clean = (typeof options.clean !== "boolean" ? true : options.clean);
     var npmPackage = fs.readFileAsync("./package.json").then(JSON.parse);
+    var version = npmPackage.get("version");
     var sourceFileNames = getSourcePaths(options.features);
     var license = utils.getLicense();
     var releaseDir = ensureDirectory(dirs.release, options.release, clean);
     var debugDir = ensureDirectory(dirs.debug, options.debug, clean);
     var browserDir = ensureDirectory(dirs.browser, options.browser, clean);
     var browserTmpDir = ensureDirectory(dirs.browserTmp, options.browser, clean);
-    return license.then(function(license) {
+    return Promise.join(license, version, function(license, version) {
         return sourceFileNames.map(function(sourceFileName) {
             return jobRunner.run(function() {
                 var sourcePath = path.join("./src", sourceFileName);
@@ -295,6 +290,7 @@ function build(options) {
                         deps = utils.parseDeps(source);
                     }
                     source = astPasses.removeComments(source, sourceFileName);
+                    source = source.replace(/__VERSION__/g, version);
                     return {
                         sourceFileName: sourceFileName,
                         source: source,
@@ -305,7 +301,8 @@ function build(options) {
                 context: {
                     sourceFileName: sourceFileName,
                     optionalModuleRequireMap: optionalModuleRequireMap,
-                    license: license
+                    license: license,
+                    version: version
                 }
             });
         });

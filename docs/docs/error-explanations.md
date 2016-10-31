@@ -115,6 +115,7 @@ Promise.resolve([5]).map(returnThree).then(function(val){
 When debugging or performing a one-time operation on a variable before passing it to a function, a return variable is forgotten.
 
 Example:
+
 ```js
 function nextFunction(something){ return Promise.resolve(something*3); }
 
@@ -319,7 +320,7 @@ This is because Bluebird adds the `Async` suffix to distinguish the original met
 
 You may also use the custom suffix option to choose another suffix that doesn't result in conflicts.
 
-If you find this issue in a common library please [open an issue](https://github.com/petkaantonov/bluebird/issues/new)
+If you find this issue in a common library please [open an issue](https://github.com/petkaantonov/bluebird/issues/new).
 
 ##Error: Catch filter must inherit from Error or be a simple predicate function
 

@@ -243,6 +243,40 @@ describe("Promise.coroutine", function() {
                 assert.equal(e, error);
             });
         });
+
+        specify("when they are already fulfilled, the yielded value should be returned asynchronously", function(){
+            var value;
+
+            var promise = Promise.coroutine(function*(){
+                yield Promise.resolve();
+                value = 2;
+            })();
+
+            value = 1;
+
+            return promise.then(function(){
+                assert.equal(value, 2);
+            });
+        });
+
+        specify("when they are already rejected, the yielded reason should be thrown asynchronously", function(){
+            var value;
+
+            var promise = Promise.coroutine(function*(){
+                try {
+                    yield Promise.reject();
+                }
+                catch (e) {
+                    value = 2;
+                }
+            })();
+
+            value = 1;
+
+            return promise.then(function(){
+                assert.equal(value, 2);
+            });
+        });
     });
 
     describe("yield loop", function(){
@@ -501,6 +535,7 @@ describe("Cancellation with generators", function() {
                 if (e === Promise.coroutine.returnSentinel) throw e;
                 unreached++;
             } finally {
+                yield Promise.resolve();
                 finalled++;
             }
             unreached++;
@@ -544,6 +579,7 @@ describe("Cancellation with generators", function() {
                 if (e === Promise.coroutine.returnSentinel) throw e;
                 unreached++;
             } finally {
+                yield Promise.resolve();
                 finalled++;
             }
             unreached++;
@@ -596,6 +632,7 @@ describe("Cancellation with generators", function() {
                 if (e === Promise.coroutine.returnSentinel) throw e;
                 unreached++;
             } finally {
+                yield Promise.resolve()
                 finalled++;
             }
             unreached++;
@@ -646,6 +683,7 @@ describe("Cancellation with generators", function() {
                 if (e === Promise.coroutine.returnSentinel) throw e;
                 unreached++;
             } finally {
+                yield Promise.resolve()
                 finalled++;
             }
             unreached++;
@@ -675,5 +713,26 @@ describe("Cancellation with generators", function() {
                 assert.equal(0, unreached);
             });
         });
+    });
+
+
+    specify("finally block runs before finally handler", function(done) {
+        var finallyBlockCalled = false;
+        var asyncFn = Promise.coroutine(function* () {
+            try {
+                yield Promise.delay(100);
+            } finally {
+                yield Promise.delay(100);
+                finallyBlockCalled = true;
+            }
+        });
+        var p = asyncFn();
+        Promise.resolve().then(function() {
+            p.cancel();
+        });
+        p.finally(function() {
+            assert.ok(finallyBlockCalled, "finally block should have been called before finally handler");
+            done();
+        }).catch(done);
     });
 });

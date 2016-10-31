@@ -7,7 +7,7 @@ This page will contain common promise anti-patterns that are exercised in the wi
 
 
 - [The explicit construction anti-pattern](#the-explicit-construction-anti-pattern)
-- [The `.then(success, fail)` anti-pattern](#the-thensuccess-fail-anti-pattern)
+- [The `.then(success, fail)` anti-pattern](#the-.then)
 
 ##The Explicit Construction Anti-Pattern
 
@@ -114,7 +114,7 @@ You might have to use a deferred object when wrapping a callback API that doesn'
 ```js
 //setTimeout that returns a promise
 function delay(ms) {
-    var deferred = Promise.pending();
+    var deferred = Promise.defer(); // warning, defer is deprecated, use the promise constructor
     setTimeout(function(){
         deferred.fulfill();
     }, ms);
@@ -123,6 +123,8 @@ function delay(ms) {
 ```
 
 Such wrappers should be rare, if they're common for the reason that the promise library cannot generically promisify them, you should file an issue.
+
+If you cannot do static promisification (promisify and promisifyAll perform too slowly to use at runtime), you may use [Promise.fromCallback](.).
 
 Also see [this StackOverflow question](http://stackoverflow.com/questions/23803743/what-is-the-deferred-antipattern-and-how-do-i-avoid-it) for more examples and a debate around it.
 

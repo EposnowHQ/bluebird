@@ -750,6 +750,13 @@ describe("Cancellation", function() {
         var p = new Promise(function(_, __, onCancel) {resolve = arguments[0]});
         return p;
     });
+
+    specify("gh-1187", function() {
+        var a = Promise.delay(300).lastly(function() {});
+        a.cancel();
+        assert(a.isCancelled());
+        assert(!a.isCancellable());
+    })
 });
 
 describe("Cancellation with .all", function() {
@@ -2036,11 +2043,11 @@ describe("Cancellation with .bind", function() {
         var cancelled = 0;
         var ctx = {};
         var main = new Promise(function(_, __, onCancel) {});
-        main.cancel();
         main.bind(ctx).lastly(function() {
             assert.equal(this, ctx);
             finalled++;
         });
+        main.cancel();
         return awaitLateQueue(function() {
             assert.equal(1, finalled);
             assert.equal(0, cancelled);
@@ -2979,6 +2986,155 @@ if (testUtils.isNodeJS) {
             return awaitLateQueue(function() {
                 assert.equal(2, calls);
                 assert.equal(1, clears);
+            });
+        });
+    });
+
+    describe("GH1000", function() {
+        var clear, set;
+        var clears = 0, sets = 0;
+        beforeEach(function() {
+            clears = 0;
+            sets = 0;
+            set = setTimeout;
+            clear = clearTimeout;
+            setTimeout = function() {
+                sets++;
+                return set.apply(this, arguments);
+            };
+            clearTimeout = function() {
+                clears++;
+                return clear.apply(this, arguments);
+            };
+        });
+
+        afterEach(function() {
+            clears = 0;
+            sets   = 0;
+            setTimeout = set;
+            clearTimeout = clear;
+        });
+
+        specify("delay", function() {
+            var calls = 0,
+                never = 0;
+            var p = Promise
+              .delay(10000000)
+              .then(function () {
+                never++;
+              });
+
+            p.lastly(function() {
+                if (p.isCancelled()) {
+                    calls++;
+                }
+            });
+
+            p.cancel();
+
+            return awaitLateQueue(function() {
+                assert.equal(0, never);
+                assert.equal(1, calls);
+                assert.equal(1, clears);
+            });
+        });
+
+        specify("delay with value", function() {
+            var calls = 0,
+                never = 0;
+
+            var p = Promise
+              .delay(10000000, true)
+              .then(function () {
+                never++;
+              });
+
+            p.lastly(function() {
+                if (p.isCancelled()) {
+                    calls++;
+                }
+            });
+
+
+
+            return Promise.delay(10)
+                .then(function () {
+                    p.cancel();
+                    return awaitLateQueue(function() {
+                            assert.equal(0, never);
+                            assert.equal(1, calls);
+                            assert.equal(1, clears);
+                        });
+                });
+        });
+
+        specify("cancel delay cancels inner promise", function() {
+            var calls = 0,
+                never = 0;
+            var pInner = Promise.delay(1000)
+                    .then(function () {
+                        never++;
+                    });
+
+            pInner.lastly(function() {
+                if (pInner.isCancelled()) {
+                    calls++;
+                }
+            });
+
+            var pOuter = Promise
+              .delay(10000000, pInner)
+              .then(function () {
+                never++;
+              });
+
+            pOuter.lastly(function() {
+                if (pOuter.isCancelled()) {
+                    calls++;
+                }
+            });
+
+
+
+            pOuter.cancel();
+            return awaitLateQueue(function() {
+                assert.equal(0, never);
+                assert.equal(2, calls);
+            });
+        });
+
+        specify("cancel inner promise cancels delay", function() {
+            var calls = 0,
+                never = 0;
+            var pInner = Promise.delay(1000)
+                    .then(function () {
+                        never++;
+                    });
+
+            pInner.lastly(function() {
+                if (pInner.isCancelled()) {
+                    calls++;
+                }
+            });
+
+            var pOuter = Promise
+              .delay(10000000, pInner)
+              .then(function () {
+                never++;
+              });
+
+            pOuter.lastly(function() {
+                if (pOuter.isCancelled()) {
+                    calls++;
+                }
+            });
+
+
+
+            pInner.cancel();
+            return awaitLateQueue(function() {
+                assert.equal(0, never);
+                assert.equal(2, calls);
             });
         });
     });

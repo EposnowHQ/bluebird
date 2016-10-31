@@ -13,11 +13,12 @@ title: Features
 - [Resource management](#resource-management)
 - [Cancellation and timeouts](#cancellation-and-timeouts)
 - [Scoped prototypes](#scoped-prototypes)
+- [Promise monitoring](#promise-monitoring)
 - [Async/Await](#async-await)
 
 ##Synchronous inspection
 
-Synchronous inspection allows you retrieve the fulfillment value of an already fulfilled promise or the rejection reason of an already rejected promise synchronously.
+Synchronous inspection allows you to retrieve the fulfillment value of an already fulfilled promise or the rejection reason of an already rejected promise synchronously.
 
 Often it is known in certain code paths that a promise is guaranteed to be fulfilled at that point - it would then be extremely inconvenient to use [`.then`](.) to get at the promise's value as the callback is always called asynchronously.
 
@@ -175,7 +176,7 @@ Such policies could include:
 - Swallowing all errors (challenge your debugging skills)
 - ...
 
-See [global rejection events](.) to learn more about the hooks.
+See [global rejection events](http://bluebirdjs.com/docs/api/error-management-configuration.html#global-rejection-events) to learn more about the hooks.
 
 ###Long stack traces
 
@@ -232,10 +233,7 @@ See [installation](install.html) on how to enable long stack traces in your envi
 
 ###Error pattern matching
 
-Perhaps the greatest thing about promises is that it unifies all error handling into one mechanism where errors propagate automatically and have to be explicitly ignored. However
-
-
-
+Perhaps the greatest thing about promises is that it unifies all error handling into one mechanism where errors propagate automatically and have to be explicitly ignored.
 
 ###Warnings
 
@@ -243,11 +241,79 @@ Promises can have a steep learning curve and it doesn't help that promise standa
 
 See [installation](install.html) on how to enable warnings in your environment.
 
+Note - in order to get full stack traces with warnings in Node 6.x+ you need to enable to `--trace-warnings` flag which will give you a full stack trace of where the warning is coming from.
 
+###Promise monitoring
+
+This feature enables subscription to promise lifecycle events via standard global events mechanisms in browsers and Node.js.
+
+The following lifecycle events are available: 
+
+ - `"promiseCreated"` - Fired when a promise is created through the constructor.
+ - `"promiseChained"` - Fired when a promise is created through chaining (e.g. [.then](.)).
+ - `"promiseFulfilled"` - Fired when a promise is fulfilled.
+ - `"promiseRejected"` - Fired when a promise is rejected.
+ - `"promiseResolved"` - Fired when a promise adopts another's state.
+ - `"promiseCancelled"` - Fired when a promise is cancelled.
+
+This feature has to be explicitly enabled by calling [Promise.config](.) with `monitoring: true`.
+
+The actual subscription API depends on the environment.
+
+1\. In Node.js, use `process.on`:
+
+```js
+// Note the event name is in camelCase, as per Node.js convention.
+process.on("promiseChained", function(promise, child) {
+    // promise - The parent promise the child was chained from
+    // child - The created child promise.
+});
+```
+
+2\. In modern browsers use `window.addEventListener` (window context) or `self.addEventListener()` (web worker or window context) method:
+
+```js
+// Note the event names are in mashedtogetherlowercase, as per DOM convention.
+self.addEventListener("promisechained", function(event) {
+    // event.details.promise - The parent promise the child was chained from
+    // event.details.child - The created child promise.
+});
+```
+
+3\. In legacy browsers use `window.oneventname = handlerFunction;`.
+
+```js
+// Note the event names are in mashedtogetherlowercase, as per legacy convention.
+window.onpromisechained = function(promise, child) {
+    // event.details.promise - The parent promise the child was chained from
+    // event.details.child - The created child promise.
+};
+```
 
 ##Resource management
 
 ##Cancellation and timeouts
+
+See [`Cancellation`](.) for how to use cancellation.
+
+```js
+// Enable cancellation
+Promise.config({cancellation: true});
+
+var fs = Promise.promisifyAll(require("fs"));
+
+// In 2000ms or less, load & parse a file 'config.json'
+var p = Promise.resolve('./config.json')
+ .timeout(2000)
+ .catch(console.error.bind(console, 'Failed to load config!'))
+ .then(fs.readFileAsync)
+ .then(JSON.parse);
+// Listen for exception event to trigger promise cancellation
+process.on('unhandledException', function(event) {
+ // cancel config loading
+ p.cancel();
+});
+```
 
 ##Scoped prototypes
 
@@ -265,5 +331,4 @@ Your library can then use `var Promise = require("bluebird-extended");` and do w
 
 
 ##Async/Await
-
 
